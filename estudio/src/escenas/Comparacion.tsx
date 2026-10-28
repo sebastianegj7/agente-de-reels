@@ -11,9 +11,9 @@ const Tarjeta: React.FC<{lado: Lado; estado: 'normal' | 'gana' | 'pierde'}> = ({
 	return (
 		<div
 			style={{
-				width: 420,
-				minHeight: 560,
-				padding: '44px 30px',
+				width: 400,
+				minHeight: 540,
+				padding: '44px 46px',
 				borderRadius: 36,
 				background: estado === 'gana' ? tema.acento : tema.tarjeta,
 				border: `3px solid ${estado === 'gana' ? tema.acento : tema.borde}`,
@@ -30,11 +30,19 @@ const Tarjeta: React.FC<{lado: Lado; estado: 'normal' | 'gana' | 'pierde'}> = ({
 			}}
 		>
 			{lado.emoji ? <div style={{fontSize: 130, lineHeight: 1}}>{lado.emoji}</div> : null}
-			<div style={{fontWeight: 900, fontSize: lado.titulo.length > 14 ? 46 : 56, lineHeight: 1.05}}>
+			<div
+				style={{
+					fontWeight: 900,
+					// Ancho útil ≈ 300 px; Montserrat Black ocupa ~0.7 em por letra.
+					fontSize: Math.min(56, Math.floor(300 / (0.7 * Math.max(...lado.titulo.split(' ').map((p) => p.length))))),
+					lineHeight: 1.05,
+					overflowWrap: 'anywhere',
+				}}
+			>
 				{lado.titulo}
 			</div>
 			{lado.texto ? (
-				<div style={{fontWeight: 600, fontSize: 36, lineHeight: 1.25, opacity: 0.85}}>{lado.texto}</div>
+				<div style={{fontWeight: 600, fontSize: 34, lineHeight: 1.25, opacity: 0.85}}>{lado.texto}</div>
 			) : null}
 		</div>
 	);
@@ -55,7 +63,7 @@ export const Comparacion: React.FC<Props> = ({izquierda, derecha, ganador}) => {
 	return (
 		<AbsoluteFill>
 			<Zona>
-				<div style={{display: 'flex', gap: 40, alignItems: 'stretch', position: 'relative'}}>
+				<div style={{display: 'flex', gap: 60, alignItems: 'stretch', position: 'relative'}}>
 					<Entrar desde="izquierda" distancia={500} retraso={entrada}>
 						<Tarjeta lado={izquierda} estado={estado('izquierda')} />
 					</Entrar>
@@ -67,10 +75,10 @@ export const Comparacion: React.FC<Props> = ({izquierda, derecha, ganador}) => {
 							position: 'absolute',
 							left: '50%',
 							top: '50%',
-							width: 150,
-							height: 150,
-							marginLeft: -75,
-							marginTop: -75,
+							width: 124,
+							height: 124,
+							marginLeft: -62,
+							marginTop: -62,
 							borderRadius: '50%',
 							background: tema.texto,
 							color: tema.fondo1,
@@ -78,7 +86,7 @@ export const Comparacion: React.FC<Props> = ({izquierda, derecha, ganador}) => {
 							alignItems: 'center',
 							justifyContent: 'center',
 							fontFamily: fuenteNumeros,
-							fontSize: 84,
+							fontSize: 70,
 							scale: interpolate(vs, [0, 1], [0, 1]),
 							rotate: `${interpolate(vs, [0, 1], [-90, 0])}deg`,
 							boxShadow: '0 12px 40px rgba(0,0,0,0.4)',

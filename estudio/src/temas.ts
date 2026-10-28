@@ -1,14 +1,38 @@
-import {loadFont as cargarMontserrat} from '@remotion/google-fonts/Montserrat';
-import {loadFont as cargarBebas} from '@remotion/google-fonts/BebasNeue';
+import {continueRender, delayRender} from 'remotion';
+import montserratLatin from './fuentes/montserrat-latin.woff2';
+import montserratLatinExt from './fuentes/montserrat-latin-ext.woff2';
+import bebasLatin from './fuentes/bebas-latin.woff2';
+import bebasLatinExt from './fuentes/bebas-latin-ext.woff2';
 
-export const {fontFamily: fuenteTexto} = cargarMontserrat('normal', {
-	weights: ['600', '800', '900'],
-	subsets: ['latin', 'latin-ext'],
-});
-export const {fontFamily: fuenteNumeros} = cargarBebas('normal', {
-	weights: ['400'],
-	subsets: ['latin'],
-});
+// Fuentes incluidas en el proyecto (Google Fonts, licencia OFL) para que el
+// render no dependa de la red. Montserrat es variable: un archivo, todos los pesos.
+const LATIN =
+	'U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD';
+const LATIN_EXT =
+	'U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF';
+
+const cargar = (familia: string, peso: string, archivos: [string, string][]) => {
+	if (typeof document === 'undefined') return;
+	const handle = delayRender(`Cargando ${familia}`);
+	Promise.all(
+		archivos.map(([url, rango]) => {
+			const f = new FontFace(familia, `url(${url}) format('woff2')`, {weight: peso, unicodeRange: rango});
+			(document.fonts as unknown as Set<FontFace>).add(f);
+			return f.load();
+		}),
+	).then(() => continueRender(handle), () => continueRender(handle));
+};
+
+export const fuenteTexto = 'Montserrat';
+export const fuenteNumeros = 'Bebas Neue';
+cargar(fuenteTexto, '100 900', [
+	[montserratLatin, LATIN],
+	[montserratLatinExt, LATIN_EXT],
+]);
+cargar(fuenteNumeros, '400', [
+	[bebasLatin, LATIN],
+	[bebasLatinExt, LATIN_EXT],
+]);
 
 export type Tema = {
 	fondo1: string;

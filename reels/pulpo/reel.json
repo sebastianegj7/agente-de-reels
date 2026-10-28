@@ -1,0 +1,530 @@
+{
+  "titulo": "El pulpo es casi un alienígena",
+  "tema": "oceano",
+  "musica": {
+    "animo": "misterioso",
+    "volumen": 0.1,
+    "archivo": "musica/base_misterioso.wav"
+  },
+  "fuentes": [
+    "https://education.nationalgeographic.org/resource/animals-101-octopuses/",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC6899024/",
+    "https://www.nhm.ac.uk/discover/octopuses-keep-surprising-us-here-are-eight-examples-how.html"
+  ],
+  "escenas": [
+    {
+      "tipo": "gancho",
+      "emoji": "🐙",
+      "titulo": "Este animal tiene *tres corazones*",
+      "imagen": {
+        "prompt": "close-up of a common octopus on a dark reef, bioluminescent blue light",
+        "archivo": null
+      },
+      "narracion": "Tiene tres corazones. Y no es lo más raro.",
+      "audio": "audio/escena_01.wav",
+      "recorteMs": 0,
+      "duracionMs": 2698,
+      "palabras": [
+        {
+          "texto": "Tiene",
+          "inicioMs": 49,
+          "finMs": 368
+        },
+        {
+          "texto": "tres",
+          "inicioMs": 395,
+          "finMs": 669
+        },
+        {
+          "texto": "corazones",
+          "inicioMs": 693,
+          "finMs": 1239
+        },
+        {
+          "texto": "Y",
+          "inicioMs": 1287,
+          "finMs": 1424
+        },
+        {
+          "texto": "no",
+          "inicioMs": 1436,
+          "finMs": 1618
+        },
+        {
+          "texto": "es",
+          "inicioMs": 1634,
+          "finMs": 1816
+        },
+        {
+          "texto": "lo",
+          "inicioMs": 1832,
+          "finMs": 2014
+        },
+        {
+          "texto": "más",
+          "inicioMs": 2030,
+          "finMs": 2258
+        },
+        {
+          "texto": "raro",
+          "inicioMs": 2278,
+          "finMs": 2597
+        }
+      ],
+      "_voz": "local-875afebd77d4"
+    },
+    {
+      "tipo": "dato",
+      "numero": 3,
+      "etiqueta": "corazones: dos para las *branquias* y uno para el cuerpo",
+      "narracion": "Dos corazones bombean sangre a las branquias y el tercero la reparte por todo el cuerpo.",
+      "audio": "audio/escena_02.wav",
+      "recorteMs": 0,
+      "duracionMs": 4999,
+      "palabras": [
+        {
+          "texto": "Dos",
+          "inicioMs": 14,
+          "finMs": 228
+        },
+        {
+          "texto": "corazones",
+          "inicioMs": 246,
+          "finMs": 717
+        },
+        {
+          "texto": "bombean",
+          "inicioMs": 758,
+          "finMs": 1143
+        },
+        {
+          "texto": "sangre",
+          "inicioMs": 1176,
+          "finMs": 1519
+        },
+        {
+          "texto": "a",
+          "inicioMs": 1548,
+          "finMs": 1677
+        },
+        {
+          "texto": "las",
+          "inicioMs": 1688,
+          "finMs": 1902
+        },
+        {
+          "texto": "branquias",
+          "inicioMs": 1920,
+          "finMs": 2391
+        },
+        {
+          "texto": "y",
+          "inicioMs": 2432,
+          "finMs": 2560
+        },
+        {
+          "texto": "el",
+          "inicioMs": 2571,
+          "finMs": 2743
+        },
+        {
+          "texto": "tercero",
+          "inicioMs": 2757,
+          "finMs": 3142
+        },
+        {
+          "texto": "la",
+          "inicioMs": 3176,
+          "finMs": 3347
+        },
+        {
+          "texto": "reparte",
+          "inicioMs": 3362,
+          "finMs": 3747
+        },
+        {
+          "texto": "por",
+          "inicioMs": 3780,
+          "finMs": 3994
+        },
+        {
+          "texto": "todo",
+          "inicioMs": 4013,
+          "finMs": 4270
+        },
+        {
+          "texto": "el",
+          "inicioMs": 4292,
+          "finMs": 4463
+        },
+        {
+          "texto": "cuerpo",
+          "inicioMs": 4478,
+          "finMs": 4863
+        }
+      ],
+      "_voz": "local-bcc67197b8a9"
+    },
+    {
+      "tipo": "comparacion",
+      "izquierda": {
+        "emoji": "🩸",
+        "titulo": "Hemoglobina",
+        "texto": "Hierro: sangre roja"
+      },
+      "derecha": {
+        "emoji": "💙",
+        "titulo": "Hemocianina",
+        "texto": "Cobre: sangre azul"
+      },
+      "ganador": "derecha",
+      "narracion": "Su sangre es azul: usa hemocianina, una proteína con cobre en lugar de hierro.",
+      "audio": "audio/escena_03.wav",
+      "recorteMs": 0,
+      "duracionMs": 4889,
+      "palabras": [
+        {
+          "texto": "Su",
+          "inicioMs": 12,
+          "finMs": 201
+        },
+        {
+          "texto": "sangre",
+          "inicioMs": 218,
+          "finMs": 596
+        },
+        {
+          "texto": "es",
+          "inicioMs": 628,
+          "finMs": 817
+        },
+        {
+          "texto": "azul",
+          "inicioMs": 834,
+          "finMs": 1165
+        },
+        {
+          "texto": "usa",
+          "inicioMs": 1193,
+          "finMs": 1430
+        },
+        {
+          "texto": "hemocianina",
+          "inicioMs": 1450,
+          "finMs": 2112
+        },
+        {
+          "texto": "una",
+          "inicioMs": 2169,
+          "finMs": 2405
+        },
+        {
+          "texto": "proteína",
+          "inicioMs": 2426,
+          "finMs": 2899
+        },
+        {
+          "texto": "con",
+          "inicioMs": 2940,
+          "finMs": 3176
+        },
+        {
+          "texto": "cobre",
+          "inicioMs": 3196,
+          "finMs": 3527
+        },
+        {
+          "texto": "en",
+          "inicioMs": 3556,
+          "finMs": 3745
+        },
+        {
+          "texto": "lugar",
+          "inicioMs": 3761,
+          "finMs": 4092
+        },
+        {
+          "texto": "de",
+          "inicioMs": 4121,
+          "finMs": 4310
+        },
+        {
+          "texto": "hierro",
+          "inicioMs": 4326,
+          "finMs": 4752
+        }
+      ],
+      "_voz": "local-f995001a4e33"
+    },
+    {
+      "tipo": "grafico",
+      "titulo": "Neuronas del pulpo *(millones)*",
+      "barras": [
+        {
+          "etiqueta": "Cerebro",
+          "valor": 170
+        },
+        {
+          "etiqueta": "Brazos",
+          "valor": 330
+        }
+      ],
+      "narracion": "Tiene unos quinientos millones de neuronas, y dos tercios están en sus brazos.",
+      "audio": "audio/escena_04.wav",
+      "recorteMs": 0,
+      "duracionMs": 4650,
+      "palabras": [
+        {
+          "texto": "Tiene",
+          "inicioMs": 49,
+          "finMs": 366
+        },
+        {
+          "texto": "unos",
+          "inicioMs": 394,
+          "finMs": 666
+        },
+        {
+          "texto": "quinientos",
+          "inicioMs": 690,
+          "finMs": 1234
+        },
+        {
+          "texto": "millones",
+          "inicioMs": 1281,
+          "finMs": 1735
+        },
+        {
+          "texto": "de",
+          "inicioMs": 1774,
+          "finMs": 1956
+        },
+        {
+          "texto": "neuronas",
+          "inicioMs": 1971,
+          "finMs": 2470
+        },
+        {
+          "texto": "y",
+          "inicioMs": 2514,
+          "finMs": 2650
+        },
+        {
+          "texto": "dos",
+          "inicioMs": 2662,
+          "finMs": 2888
+        },
+        {
+          "texto": "tercios",
+          "inicioMs": 2908,
+          "finMs": 3316
+        },
+        {
+          "texto": "están",
+          "inicioMs": 3352,
+          "finMs": 3669
+        },
+        {
+          "texto": "en",
+          "inicioMs": 3697,
+          "finMs": 3878
+        },
+        {
+          "texto": "sus",
+          "inicioMs": 3894,
+          "finMs": 4121
+        },
+        {
+          "texto": "brazos",
+          "inicioMs": 4141,
+          "finMs": 4549
+        }
+      ],
+      "_voz": "local-2084ec22469d"
+    },
+    {
+      "tipo": "frase",
+      "texto": "Cada brazo *piensa* por su cuenta",
+      "narracion": "Por eso cada brazo puede explorar y decidir casi por su cuenta.",
+      "audio": "audio/escena_05.wav",
+      "recorteMs": 0,
+      "duracionMs": 3919,
+      "palabras": [
+        {
+          "texto": "Por",
+          "inicioMs": 40,
+          "finMs": 270
+        },
+        {
+          "texto": "eso",
+          "inicioMs": 290,
+          "finMs": 520
+        },
+        {
+          "texto": "cada",
+          "inicioMs": 540,
+          "finMs": 817
+        },
+        {
+          "texto": "brazo",
+          "inicioMs": 841,
+          "finMs": 1163
+        },
+        {
+          "texto": "puede",
+          "inicioMs": 1191,
+          "finMs": 1514
+        },
+        {
+          "texto": "explorar",
+          "inicioMs": 1542,
+          "finMs": 2002
+        },
+        {
+          "texto": "y",
+          "inicioMs": 2042,
+          "finMs": 2180
+        },
+        {
+          "texto": "decidir",
+          "inicioMs": 2192,
+          "finMs": 2607
+        },
+        {
+          "texto": "casi",
+          "inicioMs": 2643,
+          "finMs": 2919
+        },
+        {
+          "texto": "por",
+          "inicioMs": 2943,
+          "finMs": 3174
+        },
+        {
+          "texto": "su",
+          "inicioMs": 3194,
+          "finMs": 3378
+        },
+        {
+          "texto": "cuenta",
+          "inicioMs": 3394,
+          "finMs": 3808
+        }
+      ],
+      "_voz": "local-9733493f5f3b"
+    },
+    {
+      "tipo": "lista",
+      "titulo": "En resumen, el pulpo tiene",
+      "items": [
+        {
+          "emoji": "❤️",
+          "texto": "Tres corazones"
+        },
+        {
+          "emoji": "💙",
+          "texto": "Sangre azul"
+        },
+        {
+          "emoji": "🧠",
+          "texto": "Neuronas en los brazos"
+        }
+      ],
+      "narracion": "Tres corazones, sangre azul y neuronas en los brazos.",
+      "audio": "audio/escena_06.wav",
+      "recorteMs": 0,
+      "duracionMs": 3097,
+      "palabras": [
+        {
+          "texto": "Tres",
+          "inicioMs": 49,
+          "finMs": 310
+        },
+        {
+          "texto": "corazones",
+          "inicioMs": 332,
+          "finMs": 855
+        },
+        {
+          "texto": "sangre",
+          "inicioMs": 900,
+          "finMs": 1248
+        },
+        {
+          "texto": "azul",
+          "inicioMs": 1279,
+          "finMs": 1540
+        },
+        {
+          "texto": "y",
+          "inicioMs": 1563,
+          "finMs": 1693
+        },
+        {
+          "texto": "neuronas",
+          "inicioMs": 1705,
+          "finMs": 2140
+        },
+        {
+          "texto": "en",
+          "inicioMs": 2178,
+          "finMs": 2352
+        },
+        {
+          "texto": "los",
+          "inicioMs": 2367,
+          "finMs": 2585
+        },
+        {
+          "texto": "brazos",
+          "inicioMs": 2603,
+          "finMs": 2995
+        }
+      ],
+      "_voz": "local-5d4023df5727"
+    },
+    {
+      "tipo": "cta",
+      "texto": "*Guárdalo* y compártelo con alguien curioso",
+      "subtexto": "Más animales raros cada semana",
+      "accion": "guardar",
+      "narracion": "Guárdalo y compártelo con alguien curioso.",
+      "audio": "audio/escena_07.wav",
+      "recorteMs": 0,
+      "duracionMs": 2541,
+      "palabras": [
+        {
+          "texto": "Guárdalo",
+          "inicioMs": 14,
+          "finMs": 470
+        },
+        {
+          "texto": "y",
+          "inicioMs": 510,
+          "finMs": 647
+        },
+        {
+          "texto": "compártelo",
+          "inicioMs": 659,
+          "finMs": 1206
+        },
+        {
+          "texto": "con",
+          "inicioMs": 1254,
+          "finMs": 1482
+        },
+        {
+          "texto": "alguien",
+          "inicioMs": 1502,
+          "finMs": 1913
+        },
+        {
+          "texto": "curioso",
+          "inicioMs": 1949,
+          "finMs": 2405
+        }
+      ],
+      "_voz": "local-2ae9f91b6321"
+    }
+  ]
+}

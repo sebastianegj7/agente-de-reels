@@ -20,9 +20,10 @@ import {Frase} from './escenas/Frase';
 import {Grafico} from './escenas/Grafico';
 import {Cta} from './escenas/Cta';
 
+// Los genera `reel.py musica` dentro de la carpeta del reel.
 const SFX = {
-	whoosh: 'https://remotion.media/whoosh.wav',
-	ding: 'https://remotion.media/ding.wav',
+	whoosh: staticFile('sfx/whoosh.wav'),
+	ding: staticFile('sfx/ding.wav'),
 };
 
 const Visual: React.FC<{escena: Escena}> = ({escena}) => {
@@ -95,7 +96,7 @@ export const Reel: React.FC<ReelProps> = ({tema, escenas, musica, efectos = true
 									<Visual escena={escena} />
 									{escena.audio ? (
 										<Sequence from={T.entrada} name="Voz" layout="none">
-											<Audio src={staticFile(escena.audio)} trimBefore={recorte} />
+											<Audio src={staticFile(escena.audio)} trimBefore={recorte} volume={0.9} />
 										</Sequence>
 									) : null}
 									{escena.palabras?.length && escena.subtitulos !== false ? (

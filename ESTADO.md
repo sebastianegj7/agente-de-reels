@@ -1,24 +1,27 @@
 # Estado del proyecto (para retomar en otra sesión)
 
-Objetivo: skill `crear-reel` que, a partir de una idea, investiga, escribe guion,
-anima (Remotion), pone voz (edge-tts, gratis) y música, y entrega un MP4 9:16.
-Pensada para ejecutarse con Sonnet. Restricción: solo herramientas gratuitas.
+Objetivo: skill `crear-reel` (`.claude/skills/crear-reel/SKILL.md`, `model: sonnet`)
+que convierte una idea en un reel MP4 9:16 con investigación, guion, animación
+(Remotion), voz (edge-tts) y música. Solo herramientas gratuitas. Diseño e
+investigación en `DISENO.md`.
 
 ## Hecho
-- `estudio/`: proyecto Remotion 4.0.539 con 8 plantillas de escena
-  (gancho, dato, lista, imagen, comparacion, frase, grafico, cta), fondo animado,
-  subtítulos karaoke, barra de progreso, transiciones y SFX. `npx tsc --noEmit` OK.
-- `estudio/render.mjs <carpeta-reel> [previas|video|ambos]`: renderiza previas PNG por escena y final.mp4.
-- `reels/_demo/reel.json`: demo sin audio; previas renderizadas OK.
-- Skills oficiales de Remotion instaladas en `.claude/skills/` (markup, captions, render).
+- `estudio/`: Remotion 4.0.539, 8 plantillas pulidas tras revisar previas (marcador de
+  `frase`, títulos largos en `comparacion`, formato de números, espacios en subtítulos),
+  fuentes locales, SFX locales, Chrome local opcional.
+- `herramientas/reel.py`: validar, voz (edge-tts + respaldo espeak-ng), imagenes
+  (Pollinations, máx. 3), musica (biblioteca o base numpy + sfx), previas, render, todo.
+- Skill `crear-reel` con esquema de reel.json, plantillas, convención `*palabra*`.
+- Reel de prueba `reels/pulpo/` renderizado de punta a punta (29.9 s). Se hizo en una
+  sesión en la nube sin acceso a edge-tts ni Pollinations: usó voz espeak-ng y emoji.
 
-## Pendiente
-1. Revisar visualmente las previas de `_demo` y pulir plantillas.
-2. `herramientas/reel.py` con subcomandos: validar, voz (edge-tts por escena, boundary="WordBoundary",
-   rellena audio/recorteMs/duracionMs/palabras), imagenes (Pollinations: con POLLINATIONS_API_KEY usa
-   gen.pollinations.ai; sin clave, image.pollinations.ai con 1 img/45 s; si falla, la plantilla cae a emoji),
-   musica (biblioteca/musica/<animo>/ o pista generada con numpy), previas, render, todo.
-3. SKILL.md `crear-reel` con `model: sonnet`: brief → investigación (WebSearch/Perplexity) → guion
-   (reel.json) → herramientas → revisar previas → render.
-4. DISENO.md con la investigación y la arquitectura.
-5. Reel de prueba de punta a punta.
+## Para usar en el PC
+    cd estudio && npm ci
+    pip install -r herramientas/requirements.txt
+    python herramientas/reel.py todo reels/pulpo --forzar   # rehace la voz con edge-tts
+
+## Ideas siguientes
+- Llenar `biblioteca/musica/<animo>/` con pistas de Pixabay/Mixkit.
+- Copiar la skill a `~/.claude/skills/` si se quiere usar fuera de este repo
+  (ajustando las rutas a la ubicación del repo).
+- Más plantillas (mapa, línea de tiempo, antes/después con imagen).

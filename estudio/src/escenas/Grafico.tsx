@@ -6,7 +6,7 @@ import type {Escena} from '../tipos';
 
 type Props = Extract<Escena, {tipo: 'grafico'}>;
 
-const ALTO_MAX = 560;
+const ALTO_MAX = 470;
 
 // Barras verticales (2-5) que crecen una tras otra con su valor encima.
 export const Grafico: React.FC<Props> = ({titulo, barras, unidad = '', destacar}) => {
@@ -44,7 +44,9 @@ export const Grafico: React.FC<Props> = ({titulo, barras, unidad = '', destacar}
 										opacity: interpolate(p, [0, 0.3], [0, 1], {extrapolateRight: 'clamp'}),
 									}}
 								>
-									{Number.isInteger(b.valor) ? Math.round(valor) : valor.toFixed(1)}
+									{(Number.isInteger(b.valor) ? Math.round(valor) : valor).toLocaleString('es-ES', {
+										maximumFractionDigits: Number.isInteger(b.valor) ? 0 : 1,
+									})}
 									{unidad}
 								</div>
 								<div

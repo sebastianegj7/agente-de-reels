@@ -21,14 +21,22 @@ export const salida = Easing.bezier(0.16, 1, 0.3, 1);
 
 // Separa "texto con *palabras resaltadas*" en tokens.
 export const tokenizar = (texto: string) => {
-	const tokens: {palabra: string; resaltada: boolean}[] = [];
+	const tokens: {palabra: string; resaltada: boolean; cola?: string}[] = [];
 	let resaltada = false;
+	let previo = '';
 	for (const parte of texto.split(/(\*)/)) {
 		if (parte === '*') {
 			resaltada = !resaltada;
 			continue;
 		}
-		for (const palabra of parte.split(/\s+/).filter(Boolean)) {
+		const palabras = parte.split(/\s+/);
+		// "*es*, lo ves": la coma va pegada a la palabra anterior, sin resaltar.
+		const anterior = tokens[tokens.length - 1];
+		if (palabras[0] && anterior && previo && !/\s$/.test(previo)) {
+			anterior.cola = (anterior.cola ?? '') + palabras.shift();
+		}
+		previo = parte;
+		for (const palabra of palabras.filter(Boolean)) {
 			tokens.push({palabra, resaltada});
 		}
 	}
@@ -97,7 +105,6 @@ export const TextoAnimado: React.FC<{
 					<span
 						key={i}
 						style={{
-							position: 'relative',
 							display: 'inline-block',
 							opacity: interpolate(frame - inicio, [0, 5], [0, 1], {
 								extrapolateLeft: 'clamp',
@@ -106,32 +113,40 @@ export const TextoAnimado: React.FC<{
 							translate: `0px ${interpolate(p, [0, 1], [tamano * 0.5, 0])}px`,
 							scale: interpolate(p, [0, 1], [0.7, 1]),
 							color: t.resaltada && !marcador ? tema.acento : undefined,
-							padding: t.resaltada && marcador ? `0 ${tamano * 0.12}em` : undefined,
 						}}
 					>
-						{t.resaltada && marcador ? (
-							<span
-								style={{
-									position: 'absolute',
-									left: 0,
-									top: '12%',
-									height: '84%',
-									width: `${barrido}%`,
-									background: tema.acento,
-									borderRadius: tamano * 0.12,
-									zIndex: 0,
-								}}
-							/>
-						) : null}
 						<span
 							style={{
 								position: 'relative',
-								zIndex: 1,
-								color: t.resaltada && marcador && barrido > 40 ? tema.sobreAcento : undefined,
+								display: 'inline-block',
+								padding: t.resaltada && marcador ? '0 0.14em' : undefined,
 							}}
 						>
-							{t.palabra}
+							{t.resaltada && marcador ? (
+								<span
+									style={{
+										position: 'absolute',
+										left: 0,
+										top: '12%',
+										height: '84%',
+										width: `${barrido}%`,
+										background: tema.acento,
+										borderRadius: tamano * 0.12,
+										zIndex: 0,
+									}}
+								/>
+							) : null}
+							<span
+								style={{
+									position: 'relative',
+									zIndex: 1,
+									color: t.resaltada && marcador && barrido > 40 ? tema.sobreAcento : undefined,
+								}}
+							>
+								{t.palabra}
+							</span>
 						</span>
+						{t.cola ? <span style={{color: color ?? tema.texto}}>{t.cola}</span> : null}
 					</span>
 				);
 			})}

@@ -48,7 +48,7 @@ export const Subtitulos: React.FC<{palabras: Palabra[]}> = ({palabras}) => {
 				display: 'flex',
 				justifyContent: 'center',
 				flexWrap: 'wrap',
-				columnGap: 18,
+				columnGap: 30,
 				fontFamily: fuenteTexto,
 				fontWeight: 900,
 				fontSize: 70,
