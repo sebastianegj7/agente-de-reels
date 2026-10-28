@@ -35,3 +35,13 @@ investigación en `DISENO.md`.
 - Copiar la skill a `~/.claude/skills/` si se quiere usar fuera de este repo
   (ajustando las rutas a la ubicación del repo).
 - Más plantillas (mapa, línea de tiempo, antes/después con imagen).
+
+## Próximo paso (sesión en el PC de Sebastián)
+1. `git fetch origin && git checkout main-q8gyml && git pull`
+2. Crear `.env` desde `.env.ejemplo` con GEMINI_API_KEY, PEXELS_API_KEY, PIXABAY_API_KEY.
+3. `cd estudio && npm ci` · `pip install -r herramientas/requirements.txt`
+4. Producir `reels/pulpo` con la skill crear-reel (desde el paso 5, `preparar`),
+   dirigir cámara/marcas mirando `cuadriculas/`, revisar previas y renderizar.
+5. Verificar en la práctica: modelo de Gemini TTS que responde (MODELOS_GEMINI en
+   reel.py), calidad de la alineación Whisper y relevancia de los clips.
+6. Si todo va bien, fusionar `main-q8gyml` en `main`.
