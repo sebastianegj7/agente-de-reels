@@ -32,6 +32,7 @@ import shutil
 import subprocess
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 import wave
@@ -56,12 +57,25 @@ TIPOS = {
     "frase": ["texto"],
     "grafico": ["titulo", "barras"],
     "cta": ["texto"],
+    "clip": ["medio"],
 }
 TEMAS = {"noche", "editorial", "energia", "oceano"}
 ANIMOS = ["energico", "tranquilo", "misterioso", "inspirador", "divertido"]
 
 
 # ---------------------------------------------------------------- utilidades
+
+def cargar_env() -> None:
+    """Lee claves de <repo>/.env (GEMINI_API_KEY, PEXELS_API_KEY, ...) sin pisar el entorno."""
+    ruta = RAIZ / ".env"
+    if not ruta.exists():
+        return
+    for linea in ruta.read_text(encoding="utf-8").splitlines():
+        linea = linea.strip()
+        if linea and not linea.startswith("#") and "=" in linea:
+            clave, valor = linea.split("=", 1)
+            os.environ.setdefault(clave.strip(), valor.strip().strip('"').strip("'"))
+
 
 def leer(carpeta: Path) -> dict:
     return json.loads((carpeta / "reel.json").read_text(encoding="utf-8"))
@@ -146,6 +160,37 @@ def validar(carpeta: Path, estricto: bool = True) -> bool:
             errores.append(f"{donde}: 'ganador' debe ser 'izquierda' o 'derecha'")
         if tipo == "cta" and e.get("accion") not in (None, "guardar", "seguir", "comentar", "compartir"):
             errores.append(f"{donde}: 'accion' debe ser guardar, seguir, comentar o compartir")
+        palabras_narr = {_normalizar(p) for p in sin_marcas(narr).split()}
+
+        def revisar_momento(obj: dict, que: str) -> None:
+            if obj.get("en") and not any(p.startswith(_normalizar(obj["en"])) for p in palabras_narr):
+                errores.append(f"{donde}: {que} usa en='{obj['en']}', que no está en la narración")
+
+        def revisar_xy(obj: dict, que: str) -> None:
+            for eje in ("x", "y"):
+                if not isinstance(obj.get(eje), (int, float)) or not 0 <= obj[eje] <= 1:
+                    errores.append(f"{donde}: {que} necesita '{eje}' entre 0 y 1")
+
+        medio = e.get("medio")
+        if medio is not None:
+            if not (medio.get("busqueda") or medio.get("prompt") or medio.get("archivo")):
+                errores.append(f"{donde}: 'medio' necesita 'busqueda' (video real) o 'prompt' (imagen IA)")
+            if medio.get("prompt") and not medio.get("busqueda"):
+                imagenes += 1
+        for k, punto in enumerate(e.get("camara") or [], 1):
+            revisar_xy(punto, f"camara[{k}]")
+            if not isinstance(punto.get("zoom"), (int, float)) or not 1 <= punto["zoom"] <= 3:
+                errores.append(f"{donde}: camara[{k}] necesita 'zoom' entre 1 y 3")
+            revisar_momento(punto, f"camara[{k}]")
+        if e.get("camara") and not medio:
+            avisos.append(f"{donde}: 'camara' sin 'medio' no hace nada")
+        for k, marca in enumerate(e.get("marcas") or [], 1):
+            revisar_xy(marca, f"marcas[{k}]")
+            if marca.get("forma") not in ("circulo", "flecha", "punto", "etiqueta"):
+                errores.append(f"{donde}: marcas[{k}].forma debe ser circulo, flecha, punto o etiqueta")
+            revisar_momento(marca, f"marcas[{k}]")
+        if tipo == "clip" and medio and not e.get("emoji"):
+            avisos.append(f"{donde}: añade 'emoji' como respaldo por si no se encuentra el medio")
         img = e.get("imagen")
         if img is not None:
             if tipo not in ("gancho", "imagen"):
@@ -269,14 +314,276 @@ def _voz_local(texto: str, velocidad: str, base: Path) -> tuple[Path, list[dict]
     return destino, limites
 
 
+def _aplicar(e: dict, carpeta: Path, archivo: Path, limites: list[dict], firma: str, inicio_seg_ms: float = 0.0, fin_seg_ms: float | None = None) -> None:
+    """Rellena audio/recorteMs/duracionMs/palabras de una escena a partir de sus límites por palabra."""
+    recorte = max(0.0, limites[0]["inicioMs"] - 50)
+    duracion = limites[-1]["finMs"] - limites[0]["inicioMs"] + 150
+    if fin_seg_ms is not None:
+        duracion = min(duracion, fin_seg_ms - inicio_seg_ms - recorte)
+    e["audio"] = archivo.relative_to(carpeta).as_posix()
+    e["recorteMs"] = round(recorte)
+    e["duracionMs"] = round(duracion)
+    e["palabras"] = [
+        {"texto": b["texto"], "inicioMs": round(b["inicioMs"] - recorte), "finMs": round(b["finMs"] - recorte)}
+        for b in limites
+    ]
+    e["_voz"] = firma
+
+
+# --- Gemini TTS: toda la narración en una llamada (mejor entonación y un solo
+# uso de la cuota gratuita), luego Whisper la alinea palabra por palabra y se
+# corta en escenas.
+
+MODELOS_GEMINI = ["gemini-3.1-flash-tts-preview", "gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"]
+VOZ_GEMINI = "Puck"
+ESTILO_GEMINI = (
+    "Narra en español latinoamericano neutro, como un creador de reels de divulgación que le cuenta "
+    "a un amigo algo fascinante: cercano, con intriga y energía, ritmo ágil, énfasis natural en las "
+    "cifras y en las preguntas, nada de tono de locutor de radio. Pausa breve entre párrafos. "
+    "Lee exactamente este texto, sin añadir nada:"
+)
+
+
+def _clave_gemini() -> str | None:
+    return os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+
+
+def _gemini_tts(texto: str, voz_gemini: str, estilo: str, destino: Path) -> None:
+    import base64
+
+    clave = _clave_gemini()
+    cuerpo = json.dumps(
+        {
+            "contents": [{"parts": [{"text": f"{estilo}\n\n{texto}"}]}],
+            "generationConfig": {
+                "responseModalities": ["AUDIO"],
+                "speechConfig": {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": voz_gemini}}},
+            },
+        }
+    ).encode("utf-8")
+    modelos = [os.environ["GEMINI_TTS_MODELO"]] if os.environ.get("GEMINI_TTS_MODELO") else MODELOS_GEMINI
+    ultimo = ""
+    for modelo in modelos:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent"
+        peticion = urllib.request.Request(
+            url, data=cuerpo, headers={"Content-Type": "application/json", "x-goog-api-key": clave}
+        )
+        try:
+            with urllib.request.urlopen(peticion, timeout=300) as r:
+                respuesta = json.loads(r.read())
+        except urllib.error.HTTPError as err:
+            detalle = err.read().decode("utf-8", "replace")[:300]
+            ultimo = f"{modelo}: HTTP {err.code} {detalle}"
+            if "API_KEY" in detalle or err.code in (401, 403):
+                raise RuntimeError("GEMINI_API_KEY no es válida (revísala en aistudio.google.com/apikey)") from err
+            if err.code in (400, 404):  # modelo inexistente o retirado: prueba el siguiente
+                continue
+            raise RuntimeError(f"Gemini TTS falló ({ultimo})") from err
+        partes = respuesta.get("candidates", [{}])[0].get("content", {}).get("parts", [])
+        datos = next((p["inlineData"] for p in partes if "inlineData" in p), None)
+        if not datos:
+            raise RuntimeError(f"Gemini TTS no devolvió audio: {str(respuesta)[:300]}")
+        audio = base64.b64decode(datos["data"])
+        if audio[:4] == b"RIFF":
+            destino.write_bytes(audio)
+        else:  # PCM crudo de 16 bits, mono
+            tasa = int((re.search(r"rate=(\d+)", datos.get("mimeType", "")) or [0, 24000])[1])
+            with wave.open(str(destino), "wb") as w:
+                w.setnchannels(1)
+                w.setsampwidth(2)
+                w.setframerate(tasa)
+                w.writeframes(audio)
+        print(f"  Gemini TTS: {modelo}, voz {voz_gemini}")
+        return
+    raise RuntimeError(f"ningún modelo de Gemini TTS respondió ({ultimo})")
+
+
+def _normalizar(p: str) -> str:
+    import unicodedata
+
+    p = unicodedata.normalize("NFD", p.lower())
+    return re.sub(r"[^a-z0-9ñ]", "", "".join(c for c in p if unicodedata.category(c) != "Mn"))
+
+
+def _leer_wav(ruta: Path):
+    import numpy as np
+
+    with wave.open(str(ruta)) as w:
+        tasa, canales = w.getframerate(), w.getnchannels()
+        datos = np.frombuffer(w.readframes(w.getnframes()), dtype="<i2")
+    if canales > 1:
+        datos = datos.reshape(-1, canales).mean(axis=1).astype("<i2")
+    return datos, tasa
+
+
+def _transcribir(ruta: Path, guion: str) -> list[tuple[str, float, float]] | None:
+    """Palabras reconocidas con tiempos (ms) usando faster-whisper, o None si no está instalado."""
+    try:
+        from faster_whisper import WhisperModel
+    except ImportError:
+        return None
+    modelo = WhisperModel(os.environ.get("WHISPER_MODELO", "small"), device="cpu", compute_type="int8")
+    segmentos, _ = modelo.transcribe(
+        str(ruta), language="es", word_timestamps=True, initial_prompt=guion[:600], beam_size=5
+    )
+    return [(w.word, w.start * 1000, w.end * 1000) for s in segmentos for w in (s.words or [])]
+
+
+def _alinear(guion: list[str], reconocidas: list[tuple[str, float, float]] | None, datos, tasa) -> tuple[list[tuple[float, float]], float]:
+    """Tiempos (inicio, fin) en ms para cada palabra del guion y fracción alineada."""
+    import difflib
+    import numpy as np
+
+    activo = np.nonzero(np.abs(datos) > 500)[0]
+    voz_ini = activo[0] / tasa * 1000 if len(activo) else 0.0
+    voz_fin = activo[-1] / tasa * 1000 if len(activo) else len(datos) / tasa * 1000
+    tiempos: list[tuple[float, float] | None] = [None] * len(guion)
+    proporcion = 0.0
+    if reconocidas:
+        a = [_normalizar(p) for p in guion]
+        b = [_normalizar(w[0]) for w in reconocidas]
+        emparejadas = 0
+        for bloque in difflib.SequenceMatcher(None, a, b, autojunk=False).get_matching_blocks():
+            for k in range(bloque.size):
+                _, ini, fin = reconocidas[bloque.b + k]
+                tiempos[bloque.a + k] = (ini, fin)
+                emparejadas += 1
+        proporcion = emparejadas / max(1, len(guion))
+    # Las palabras sin pareja (números leídos distinto, etc.) se reparten por letras
+    # entre las anclas vecinas.
+    i = 0
+    while i < len(guion):
+        if tiempos[i] is not None:
+            i += 1
+            continue
+        j = i
+        while j < len(guion) and tiempos[j] is None:
+            j += 1
+        desde = tiempos[i - 1][1] if i > 0 else voz_ini
+        hasta = tiempos[j][0] if j < len(guion) else voz_fin
+        pesos = [len(p) + 2 for p in guion[i:j]]
+        total = sum(pesos)
+        t = desde
+        for k, peso in zip(range(i, j), pesos):
+            d = (hasta - desde) * peso / total
+            tiempos[k] = (t, t + d * 0.9)
+            t += d
+        i = j
+    return tiempos, proporcion  # type: ignore[return-value]
+
+
+def _estimar_por_silencios(palabras: list[list[str]], datos, tasa) -> list[tuple[float, float]]:
+    """Sin Whisper: corta escenas en los silencios más largos y reparte palabras por letras."""
+    import numpy as np
+
+    paso = int(tasa * 0.02)
+    n = len(datos) // paso
+    energia = np.sqrt((datos[: n * paso].astype(np.float32).reshape(n, paso) ** 2).mean(axis=1))
+    callado = energia < max(300.0, energia.max() * 0.03)
+    silencios, k = [], 0
+    while k < n:
+        if callado[k]:
+            j = k
+            while j < n and callado[j]:
+                j += 1
+            if k > 0 and j < n:  # solo silencios internos
+                silencios.append((j - k, (k + j) / 2 * 20.0))
+            k = j
+        else:
+            k += 1
+    cortes = sorted(c for _, c in sorted(silencios, reverse=True)[: len(palabras) - 1])
+    bordes = [0.0] + cortes + [len(datos) / tasa * 1000]
+    if len(bordes) != len(palabras) + 1:  # no hubo pausas suficientes
+        return _alinear([p for ps in palabras for p in ps], None, datos, tasa)[0]
+    tiempos = []
+    for ps, ini, fin in zip(palabras, bordes, bordes[1:]):
+        trozo = datos[int(ini * tasa / 1000) : int(fin * tasa / 1000)]
+        tiempos += [(a + ini, b + ini) for a, b in _alinear(ps, None, trozo, tasa)[0]]
+    return tiempos
+
+
+def _voz_gemini(reel: dict, carpeta: Path, forzar: bool) -> None:
+    import numpy as np
+
+    cfg = reel.get("voz") or {}
+    voz_gemini = cfg.get("gemini", VOZ_GEMINI)
+    estilo = cfg.get("estilo", ESTILO_GEMINI)
+    escenas = reel["escenas"]
+    textos = [sin_marcas(e["narracion"]).strip() for e in escenas]
+    firma = "gemini-" + huella("\n".join(textos), voz_gemini, estilo)
+    if not forzar and all(e.get("_voz") == firma and e.get("audio") and (carpeta / e["audio"]).exists() for e in escenas):
+        print("Voz: sin cambios (Gemini)")
+        return
+    completo = carpeta / "audio" / "narracion.wav"
+    _gemini_tts("\n\n".join(textos), voz_gemini, estilo, completo)
+    datos, tasa = _leer_wav(completo)
+    palabras = [t.split() for t in textos]
+    plano = [p for ps in palabras for p in ps]
+    print("  Alineando palabras con Whisper…")
+    reconocidas = _transcribir(completo, " ".join(textos))
+    if reconocidas is None:
+        print("  aviso: falta faster-whisper (pip install faster-whisper); tiempos estimados, subtítulos menos exactos")
+    if reconocidas is None:
+        tiempos, proporcion = _estimar_por_silencios(palabras, datos, tasa), 0.0
+    else:
+        tiempos, proporcion = _alinear(plano, reconocidas, datos, tasa)
+    if reconocidas is not None and proporcion < 0.6:
+        raise RuntimeError(f"la voz no coincide con el guion (solo {proporcion:.0%} de palabras alineadas)")
+
+    # Cortes a mitad del silencio entre la última palabra de una escena y la primera de la siguiente.
+    limites_escena, k = [], 0
+    for ps in palabras:
+        limites_escena.append((k, k + len(ps)))
+        k += len(ps)
+    cortes = [0.0]
+    for (_, fin_a), (ini_b, _) in zip(limites_escena, limites_escena[1:]):
+        cortes.append((tiempos[fin_a - 1][1] + tiempos[ini_b][0]) / 2)
+    cortes.append(len(datos) / tasa * 1000)
+
+    for i, (e, (a, b)) in enumerate(zip(escenas, limites_escena), 1):
+        ini_ms, fin_ms = cortes[i - 1], cortes[i]
+        archivo = carpeta / "audio" / f"escena_{i:02d}.wav"
+        for viejo in archivo.parent.glob(archivo.stem + ".*"):
+            viejo.unlink()
+        trozo = datos[int(ini_ms * tasa / 1000) : int(fin_ms * tasa / 1000)]
+        with wave.open(str(archivo), "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(tasa)
+            w.writeframes(np.asarray(trozo, dtype="<i2").tobytes())
+        limites = [
+            {"texto": re.sub(r"[¿?¡!.,;:…\"«»()]", "", p) or p, "inicioMs": t0 - ini_ms, "finMs": t1 - ini_ms}
+            for p, (t0, t1) in zip(plano[a:b], tiempos[a:b])
+        ]
+        _aplicar(e, carpeta, archivo, limites, firma, ini_ms, fin_ms)
+        print(f"Voz {i}: {e['duracionMs'] / 1000:.1f} s, {len(limites)} palabras (gemini)")
+    guardar(carpeta, reel)
+    if reconocidas is not None:
+        print(f"  {proporcion:.0%} de las palabras alineadas con Whisper")
+
+
 def voz(carpeta: Path, motor: str = "auto", forzar: bool = False) -> None:
     reel = leer(carpeta)
     cfg = reel.get("voz") or {}
     nombre = cfg.get("nombre", VOZ_POR_DEFECTO)
     velocidad = cfg.get("velocidad", VELOCIDAD_POR_DEFECTO)
     (carpeta / "audio").mkdir(exist_ok=True)
-    usar_local = motor == "local"
 
+    if motor == "gemini" or (motor == "auto" and _clave_gemini()):
+        try:
+            _voz_gemini(reel, carpeta, forzar)
+            _resumen_voz(reel)
+            return
+        except Exception as err:
+            if motor == "gemini":
+                raise
+            print(f"  {err}\n  → uso edge-tts")
+            reel = leer(carpeta)
+            forzar = True  # la narración de Gemini pudo quedar a medias
+    elif motor == "auto":
+        print("  aviso: sin GEMINI_API_KEY uso edge-tts (voz más plana); ver .env.ejemplo")
+
+    usar_local = motor == "local"
     for i, e in enumerate(reel["escenas"], 1):
         texto = sin_marcas(e["narracion"]).strip()
         h = huella(texto, nombre, velocidad)
@@ -299,19 +606,13 @@ def voz(carpeta: Path, motor: str = "auto", forzar: bool = False) -> None:
         if usar_local:
             archivo, limites = _voz_local(texto, velocidad, base)
             origen = "local"
-
-        recorte = max(0.0, limites[0]["inicioMs"] - 50)
-        e["audio"] = archivo.relative_to(carpeta).as_posix()
-        e["recorteMs"] = round(recorte)
-        e["duracionMs"] = round(limites[-1]["finMs"] - limites[0]["inicioMs"] + 150)
-        e["palabras"] = [
-            {"texto": b["texto"], "inicioMs": round(b["inicioMs"] - recorte), "finMs": round(b["finMs"] - recorte)}
-            for b in limites
-        ]
-        e["_voz"] = h if origen == "edge" else f"local-{h}"
+        _aplicar(e, carpeta, archivo, limites, h if origen == "edge" else f"local-{h}")
         print(f"Voz {i}: {e['duracionMs'] / 1000:.1f} s, {len(limites)} palabras ({origen})")
         guardar(carpeta, reel)
+    _resumen_voz(reel)
 
+
+def _resumen_voz(reel: dict) -> None:
     total = sum(e.get("duracionMs", 0) for e in reel["escenas"]) / 1000
     print(f"Narración total: {total:.1f} s")
     if any(str(e.get("_voz", "")).startswith("local-") for e in reel["escenas"]):
@@ -385,6 +686,137 @@ def imagenes(carpeta: Path, forzar: bool = False) -> None:
         guardar(carpeta, reel)
     for i, e in pendientes[MAX_IMAGENES:]:
         print(f"Imagen {i}: se omite (máximo {MAX_IMAGENES} por reel)")
+
+
+# -------------------------------------------------------------------- medios
+# Videos reales de Pexels y Pixabay (gratis, con clave). Se prefieren clips
+# verticales; los horizontales se recortan al centro.
+
+def _pedir_json(url: str, cabeceras: dict | None = None) -> dict:
+    peticion = urllib.request.Request(url, headers={"User-Agent": "agente-de-reels/1.0", **(cabeceras or {})})
+    with urllib.request.urlopen(peticion, timeout=60) as r:
+        return json.loads(r.read())
+
+
+def _buscar_pexels(busqueda: str) -> list[dict]:
+    clave = os.environ.get("PEXELS_API_KEY")
+    if not clave:
+        return []
+    candidatos = []
+    for orientacion in ("portrait", None):
+        params = {"query": busqueda, "per_page": 15, "size": "medium"}
+        if orientacion:
+            params["orientation"] = orientacion
+        datos = None
+        for base in ("https://api.pexels.com/videos/search", "https://api.pexels.com/v1/videos/search"):
+            try:
+                datos = _pedir_json(f"{base}?{urllib.parse.urlencode(params)}", {"Authorization": clave})
+                break
+            except urllib.error.HTTPError as err:
+                if err.code in (401, 403):
+                    raise RuntimeError("PEXELS_API_KEY no es válida") from err
+            except Exception as err:
+                print(f"  Pexels: {err}")
+        for v in (datos or {}).get("videos", []):
+            archivos = [f for f in v.get("video_files", []) if f.get("file_type") == "video/mp4" and f.get("height")]
+            if not archivos:
+                continue
+            # El más chico que siga siendo nítido en 1080x1920 (lado corto ≥ 1080).
+            buenos = sorted((f for f in archivos if min(f["width"], f["height"]) >= 1080), key=lambda f: f["width"] * f["height"])
+            elegido = buenos[0] if buenos else max(archivos, key=lambda f: f["width"] * f["height"])
+            candidatos.append(
+                {
+                    "id": f"pexels:{v['id']}",
+                    "url": elegido["link"],
+                    "vertical": elegido["height"] > elegido["width"],
+                    "duracionS": v.get("duration", 0),
+                    "credito": f"{(v.get('user') or {}).get('name', 'Autor')} / Pexels",
+                }
+            )
+        if len(candidatos) >= 5:
+            break
+    return candidatos
+
+
+def _buscar_pixabay(busqueda: str) -> list[dict]:
+    clave = os.environ.get("PIXABAY_API_KEY")
+    if not clave:
+        return []
+    params = {"key": clave, "q": busqueda[:100], "per_page": 20, "safesearch": "true", "video_type": "film"}
+    try:
+        datos = _pedir_json(f"https://pixabay.com/api/videos/?{urllib.parse.urlencode(params)}")
+    except urllib.error.HTTPError as err:
+        if err.code in (400, 401, 403):
+            raise RuntimeError("PIXABAY_API_KEY no es válida") from err
+        print(f"  Pixabay: {err}")
+        return []
+    except Exception as err:
+        print(f"  Pixabay: {err}")
+        return []
+    candidatos = []
+    for h in datos.get("hits", []):
+        variantes = [v for v in (h.get("videos") or {}).values() if v.get("url")]
+        buenos = sorted((v for v in variantes if min(v["width"], v["height"]) >= 1080), key=lambda v: v["width"] * v["height"])
+        elegido = buenos[0] if buenos else (max(variantes, key=lambda v: v["width"] * v["height"]) if variantes else None)
+        if elegido:
+            candidatos.append(
+                {
+                    "id": f"pixabay:{h['id']}",
+                    "url": elegido["url"],
+                    "vertical": elegido["height"] > elegido["width"],
+                    "duracionS": h.get("duration", 0),
+                    "credito": f"{h.get('user', 'Autor')} / Pixabay",
+                }
+            )
+    return candidatos
+
+
+def medios(carpeta: Path, forzar: bool = False, cuadriculas: bool = True) -> None:
+    reel = leer(carpeta)
+    (carpeta / "medios").mkdir(exist_ok=True)
+    con_medio = [(i, e) for i, e in enumerate(reel["escenas"], 1) if e.get("medio")]
+    if not con_medio:
+        print("Sin medios en este reel.")
+    if con_medio and not (os.environ.get("PEXELS_API_KEY") or os.environ.get("PIXABAY_API_KEY")):
+        print("  aviso: sin PEXELS_API_KEY ni PIXABAY_API_KEY no se pueden buscar videos (ver .env.ejemplo)")
+    usados = {e["medio"].get("id") for _, e in con_medio if e["medio"].get("archivo")}
+    for i, e in con_medio:
+        m = e["medio"]
+        if not forzar and m.get("archivo") and (carpeta / m["archivo"]).exists():
+            print(f"Medio {i}: ya está ({m.get('credito', m['archivo'])})")
+            continue
+        m["archivo"] = None
+        if m.get("busqueda"):
+            print(f"Medio {i}: buscando “{m['busqueda']}”…")
+            excluir = set(m.get("excluir", [])) | usados
+            candidatos = [c for c in _buscar_pexels(m["busqueda"]) + _buscar_pixabay(m["busqueda"]) if c["id"] not in excluir]
+            # Verticales primero; luego los que duran lo suficiente.
+            candidatos.sort(key=lambda c: (not c["vertical"], c["duracionS"] < 5))
+            for c in candidatos[:3]:
+                destino = carpeta / "medios" / f"escena_{i:02d}.mp4"
+                try:
+                    peticion = urllib.request.Request(c["url"], headers={"User-Agent": "agente-de-reels/1.0"})
+                    with urllib.request.urlopen(peticion, timeout=180) as r, destino.open("wb") as f:
+                        shutil.copyfileobj(r, f)
+                except Exception as err:
+                    print(f"  no se pudo descargar {c['id']}: {err}")
+                    continue
+                m.update(archivo=destino.relative_to(carpeta).as_posix(), tipo="video", id=c["id"], credito=c["credito"], duracionS=c["duracionS"])
+                usados.add(c["id"])
+                print(f"  {c['id']} ({'vertical' if c['vertical'] else 'horizontal'}, {c['duracionS']} s) — {c['credito']}")
+                break
+        if not m.get("archivo") and m.get("prompt"):
+            destino = carpeta / "medios" / f"escena_{i:02d}.jpg"
+            print(f"Medio {i}: imagen IA “{m['prompt'][:60]}”…")
+            if _descargar_imagen(m["prompt"], destino, semilla=1000 + i):
+                m.update(archivo=destino.relative_to(carpeta).as_posix(), tipo="imagen", id="pollinations", credito="Imagen IA (Pollinations)")
+        if not m.get("archivo"):
+            print(f"  sin medio para la escena {i}: se verá con el fondo animado (o el emoji en 'clip')")
+        guardar(carpeta, reel)
+    imagenes(carpeta, forzar)  # imágenes IA del formato anterior (campo `imagen`)
+    if cuadriculas and any(e["medio"].get("archivo") for _, e in con_medio):
+        _node(carpeta, "cuadriculas")
+        print(f"Revisa {carpeta / 'cuadriculas'} para elegir coordenadas de cámara y marcas.")
 
 
 # -------------------------------------------------------------------- musica
@@ -575,17 +1007,21 @@ def main() -> None:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     ap = argparse.ArgumentParser(description="Herramientas de producción de reels")
-    ap.add_argument("comando", choices=["validar", "voz", "imagenes", "musica", "previas", "render", "todo"])
+    ap.add_argument(
+        "comando",
+        choices=["validar", "voz", "medios", "imagenes", "cuadriculas", "musica", "preparar", "previas", "render", "todo"],
+    )
     ap.add_argument("carpeta", type=Path, help="carpeta del reel (contiene reel.json)")
     ap.add_argument("--forzar", action="store_true", help="regenera aunque ya exista")
     ap.add_argument(
         "--motor-voz",
-        choices=["auto", "edge", "local"],
+        choices=["auto", "gemini", "edge", "local"],
         default="auto",
-        help="auto: edge-tts y, si falla, espeak-ng; edge: solo edge-tts; local: solo espeak-ng",
+        help="auto: Gemini (si hay GEMINI_API_KEY), si no edge-tts, y espeak-ng como último recurso",
     )
     ap.add_argument("--sin-video", action="store_true", help="en 'todo', para en las previas")
     a = ap.parse_args()
+    cargar_env()
     carpeta = a.carpeta.resolve()
     if not (carpeta / "reel.json").exists():
         sys.exit(f"No existe {carpeta / 'reel.json'}")
@@ -594,18 +1030,29 @@ def main() -> None:
         validar(carpeta)
     elif a.comando == "voz":
         voz(carpeta, a.motor_voz, a.forzar)
+    elif a.comando == "medios":
+        medios(carpeta, a.forzar)
     elif a.comando == "imagenes":
         imagenes(carpeta, a.forzar)
+    elif a.comando == "cuadriculas":
+        _node(carpeta, "cuadriculas")
     elif a.comando == "musica":
         musica(carpeta, a.forzar)
     elif a.comando == "previas":
         previas(carpeta)
     elif a.comando == "render":
         render(carpeta)
+    elif a.comando == "preparar":
+        # Todo lo que no depende de mirar los medios: luego se escriben cámara y
+        # marcas viendo las cuadrículas, y se sigue con `previas`.
+        validar(carpeta)
+        voz(carpeta, a.motor_voz, a.forzar)
+        medios(carpeta, a.forzar)
+        musica(carpeta, a.forzar)
     elif a.comando == "todo":
         validar(carpeta)
         voz(carpeta, a.motor_voz, a.forzar)
-        imagenes(carpeta, a.forzar)
+        medios(carpeta, a.forzar, cuadriculas=False)
         musica(carpeta, a.forzar)
         _node(carpeta, "previas" if a.sin_video else "ambos")
         if not a.sin_video:

@@ -1,4 +1,4 @@
-// Uso: node render.mjs <carpeta-del-reel> [previas|video|ambos]
+// Uso: node render.mjs <carpeta-del-reel> [previas|video|ambos|cuadriculas]
 // - previas: un PNG por escena (en su momento más "lleno") en <reel>/previas/
 // - video:   <reel>/final.mp4
 // La carpeta del reel es la carpeta pública: audio/, img/ y musica/ se
@@ -42,6 +42,26 @@ const serveUrl = await bundle({
 	entryPoint: path.join(aqui, 'src', 'index.ts'),
 	publicDir: carpeta,
 });
+if (modo === 'cuadriculas') {
+	// Dos fotogramas por medio (al inicio y al ~70 % de la escena) con cuadrícula,
+	// para ver dónde está cada cosa y si se mueve.
+	const dir = path.join(carpeta, 'cuadriculas');
+	fs.mkdirSync(dir, {recursive: true});
+	for (const [i, e] of reel.escenas.entries()) {
+		if (!e.medio?.archivo) continue;
+		const inputProps = {medio: e.medio};
+		const comp = await selectComposition({serveUrl, id: 'Cuadricula', inputProps, browserExecutable});
+		const dur = (e.duracionMs ?? 3000) / 1000;
+		for (const [sufijo, seg] of [['a', 0.3], ['b', dur * 0.7]]) {
+			const salida = path.join(dir, `escena_${String(i + 1).padStart(2, '0')}${sufijo}.jpg`);
+			const frame = Math.min(comp.durationInFrames - 1, Math.round(seg * comp.fps * (e.medio.velocidad ?? 1)));
+			await renderStill({composition: comp, serveUrl, output: salida, frame, inputProps, imageFormat: 'jpeg', scale: 0.5, browserExecutable});
+			console.log(`Cuadrícula: ${salida}`);
+		}
+	}
+	process.exit(0);
+}
+
 const composition = await selectComposition({serveUrl, id: 'Reel', inputProps: reel, browserExecutable});
 const segundos = (composition.durationInFrames / composition.fps).toFixed(1);
 console.log(`Duración: ${segundos}s (${composition.durationInFrames} frames)`);

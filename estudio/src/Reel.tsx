@@ -19,6 +19,8 @@ import {Comparacion} from './escenas/Comparacion';
 import {Frase} from './escenas/Frase';
 import {Grafico} from './escenas/Grafico';
 import {Cta} from './escenas/Cta';
+import {Clip} from './escenas/Clip';
+import {FondoMedio} from './componentes/Medio';
 
 // Los genera `reel.py musica` dentro de la carpeta del reel.
 const SFX = {
@@ -44,6 +46,8 @@ const Visual: React.FC<{escena: Escena}> = ({escena}) => {
 			return <Grafico {...escena} />;
 		case 'cta':
 			return <Cta {...escena} />;
+		case 'clip':
+			return <Clip {...escena} />;
 	}
 };
 
@@ -92,7 +96,12 @@ export const Reel: React.FC<ReelProps> = ({tema, escenas, musica, efectos = true
 								name={`${i + 1}. ${escena.tipo}`}
 								durationInFrames={m.duracion}
 							>
-								<TiempoContexto.Provider value={{entrada: T.entrada, audioFrames: m.audioFrames}}>
+								<TiempoContexto.Provider
+									value={{entrada: T.entrada, audioFrames: m.audioFrames, palabras: escena.palabras}}
+								>
+									{escena.medio?.archivo && escena.tipo !== 'clip' ? (
+										<FondoMedio medio={escena.medio} camara={escena.camara} oscurecer={0.62} />
+									) : null}
 									<Visual escena={escena} />
 									{escena.audio ? (
 										<Sequence from={T.entrada} name="Voz" layout="none">

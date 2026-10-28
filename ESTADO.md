@@ -15,10 +15,20 @@ investigación en `DISENO.md`.
 - Reel de prueba `reels/pulpo/` renderizado de punta a punta (29.9 s). Se hizo en una
   sesión en la nube sin acceso a edge-tts ni Pollinations: usó voz espeak-ng y emoji.
 
+## Versión 2 (más visual)
+- Voz Gemini TTS + alineación Whisper (respaldos edge-tts y espeak-ng).
+- Videos de Pexels/Pixabay como fondo o protagonistas (`clip`), cámara y marcas
+  sincronizadas con palabras, cuadrículas para elegir coordenadas.
+- Skill reescrita: gancho-pregunta, bucle abierto, cambio visual cada ~2 s.
+- `reels/pulpo/reel.json` reescrito con el nuevo enfoque, **sin producir todavía**:
+  esta nube no llega a Gemini/Pexels/Pixabay/Hugging Face. Probado aquí con un video
+  sintético y voz simulada (cámara, marcas, cortes por escena y alineación funcionan).
+
 ## Para usar en el PC
     cd estudio && npm ci
     pip install -r herramientas/requirements.txt
-    python herramientas/reel.py todo reels/pulpo --forzar   # rehace la voz con edge-tts
+    copy .env.ejemplo .env      # y pega las claves de Gemini, Pexels y Pixabay
+    # en Claude Code: /crear-reel rehaz el reel del pulpo con reels/pulpo/reel.json
 
 ## Ideas siguientes
 - Llenar `biblioteca/musica/<animo>/` con pistas de Pixabay/Mixkit.

@@ -8,12 +8,13 @@ import {
 	useVideoConfig,
 } from 'remotion';
 import {fuenteTexto, temas, type Tema} from '../temas';
+import type {Palabra} from '../tipos';
 
 export const TemaContexto = createContext<Tema>(temas.noche);
 export const useTema = () => useContext(TemaContexto);
 
 // Datos de tiempo de la escena actual (frames relativos a su Sequence).
-export type TiempoEscena = {entrada: number; audioFrames: number};
+export type TiempoEscena = {entrada: number; audioFrames: number; palabras?: Palabra[]};
 export const TiempoContexto = createContext<TiempoEscena>({entrada: 0, audioFrames: 90});
 export const useTiempo = () => useContext(TiempoContexto);
 
@@ -241,4 +242,28 @@ export const Entrar: React.FC<{
 			{children}
 		</div>
 	);
+};
+
+// Compara palabras sin tildes, mayúsculas ni puntuación.
+export const normalizar = (p: string) =>
+	p
+		.toLowerCase()
+		.normalize('NFD')
+		.replace(/[\u0300-\u036f]/g, '')
+		.replace(/[^a-z0-9ñ]/g, '');
+
+// Frame (relativo a la escena) en que empieza a sonar `palabra`, o en la
+// fracción `t` de la narración. Sirve para sincronizar zooms y marcas con la voz.
+export const useMomento = () => {
+	const {fps} = useVideoConfig();
+	const {entrada, audioFrames, palabras} = useTiempo();
+	return (momento: {en?: string; t?: number}, porDefecto = 0) => {
+		if (momento.en && palabras?.length) {
+			const buscada = normalizar(momento.en);
+			const p = palabras.find((w) => normalizar(w.texto).startsWith(buscada));
+			if (p) return entrada + Math.round((p.inicioMs / 1000) * fps);
+		}
+		const t = momento.t ?? porDefecto;
+		return entrada + Math.round(t * audioFrames);
+	};
 };

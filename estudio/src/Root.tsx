@@ -2,6 +2,7 @@ import React from 'react';
 import {Composition, type CalculateMetadataFunction} from 'remotion';
 import T from './tiempos.json';
 import {Reel} from './Reel';
+import {Cuadricula} from './Cuadricula';
 import {calcularMarcas, duracionTotal, type Reel as ReelProps} from './tipos';
 
 // La duración sale de los audios de cada escena; las marcas se devuelven en
@@ -52,14 +53,25 @@ const ejemplo: ReelProps = {
 };
 
 export const RemotionRoot: React.FC = () => (
-	<Composition
-		id="Reel"
-		component={Reel}
-		fps={T.fps}
-		width={T.ancho}
-		height={T.alto}
-		durationInFrames={300}
-		defaultProps={ejemplo}
-		calculateMetadata={calcular}
-	/>
+	<>
+		<Composition
+			id="Cuadricula"
+			component={Cuadricula}
+			fps={T.fps}
+			width={T.ancho}
+			height={T.alto}
+			durationInFrames={T.fps * 60}
+			defaultProps={{medio: {}}}
+		/>
+		<Composition
+			id="Reel"
+			component={Reel}
+			fps={T.fps}
+			width={T.ancho}
+			height={T.alto}
+			durationInFrames={300}
+			defaultProps={ejemplo}
+			calculateMetadata={calcular}
+		/>
+	</>
 );
