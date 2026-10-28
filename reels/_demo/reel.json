@@ -1,0 +1,10 @@
+{"titulo":"Demo","tema":"noche","efectos":false,"escenas":[
+{"tipo":"gancho","narracion":"","emoji":"🧠","titulo":"Tu cerebro *te engaña* cada día"},
+{"tipo":"dato","narracion":"","numero":95,"sufijo":"%","etiqueta":"de tus decisiones son *automáticas*"},
+{"tipo":"lista","narracion":"","titulo":"3 sesgos que *te controlan*","items":[{"emoji":"🪞","texto":"Sesgo de confirmación"},{"emoji":"⚓","texto":"Efecto ancla"},{"emoji":"🐑","texto":"Efecto rebaño"}]},
+{"tipo":"comparacion","narracion":"","izquierda":{"emoji":"⚡","titulo":"Sistema 1","texto":"Rápido e intuitivo"},"derecha":{"emoji":"🐢","titulo":"Sistema 2","texto":"Lento y racional"},"ganador":"derecha"},
+{"tipo":"frase","narracion":"","texto":"No ves el mundo como *es*, lo ves como *eres*","autor":"Anaïs Nin"},
+{"tipo":"grafico","narracion":"","titulo":"Decisiones *por día*","barras":[{"etiqueta":"Niño","valor":3000},{"etiqueta":"Adulto","valor":35000}]},
+{"tipo":"imagen","narracion":"","emoji":"🌌","titulo":"Sin imagen: respaldo"},
+{"tipo":"cta","narracion":"","texto":"*Guárdalo* para no olvidarlo","subtexto":"y sígueme para más","accion":"guardar"}
+]}

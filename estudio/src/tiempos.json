@@ -1,0 +1,10 @@
+{
+  "fps": 30,
+  "ancho": 1080,
+  "alto": 1920,
+  "transicion": 10,
+  "entrada": 2,
+  "cola": 6,
+  "finalExtra": 36,
+  "duracionPorDefectoMs": 3000
+}

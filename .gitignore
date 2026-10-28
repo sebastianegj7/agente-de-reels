@@ -1,0 +1,15 @@
+node_modules/
+estudio/node_modules/
+estudio/out/
+.remotion/
+__pycache__/
+*.pyc
+.env
+.env.*
+# Salidas pesadas de cada reel (se regeneran con herramientas/reel.py)
+reels/**/final.mp4
+reels/**/audio/
+reels/**/musica/
+reels/**/previas/
+biblioteca/musica/**/*.mp3
+biblioteca/musica/**/*.wav
